@@ -5,7 +5,7 @@ import numpy as np
 import timeit
 
 import classic
-import auxiliary
+import sendrier
 
 error_vec_list = []
 
@@ -67,8 +67,8 @@ def fujisaki_okamoto_encrypt(m, n, k, pk):
     r = random_matrix(Integers(2), 1, k)
     in1 = concat(r, m)
     z1 = bin(H(in1, n, t))[2:] #BtoCW takes binary strings as input 
-    z2 = auxiliary.BtoCW(n, t, 0, z1, 0)
-    #z = auxiliary.positional_to_vector(z2, n)
+    z2 = sendrier.BtoCW(n, t, 0, z1, 0)
+    #z = sendrier.positional_to_vector(z2, n)
     #z = Conv(z, n)
     #print('r', r, 'z', z)
     c1 = classic.encrypt(r, z, pk)
