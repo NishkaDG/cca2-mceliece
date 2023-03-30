@@ -6,6 +6,7 @@ import timeit
 
 import classic
 import sendrier
+import ideal_stc
 
 error_vec_list = []
 
@@ -61,14 +62,36 @@ def R(r, k):
     h_vec = matrix(Integers(2), h_list)
     return h_vec
 
-def fujisaki_okamoto_encrypt(m, n, k, pk):
+def fujisaki_okamoto_encrypt_sendrier(m, n, k, pk):
     t = pk[1]
     #Generate r
     r = random_matrix(Integers(2), 1, k)
     in1 = concat(r, m)
     z1 = bin(H(in1, n, t))[2:] #BtoCW takes binary strings as input 
     z2 = sendrier.BtoCW(n, t, 0, z1, 0)
-    #z = sendrier.positional_to_vector(z2, n)
+    z3 = sendrier.BtoCW(n, t, 0, z1, 0)
+    if not (z2 == z3):
+        print("Oops! Not a function!")
+    z = sendrier.positional_to_vector(z2, n)
+    assert vector(z).hamming_weight() == t
+    #z = Conv(z, n)
+    #print('r', r, 'z', z)
+    c1 = classic.encrypt(r, z, pk)
+    in2 = concat(r, matrix(Integers(2), [0]))
+    c2 = R(in2, k) + m
+    return c1, c2
+
+def fujisaki_okamoto_encrypt_ideal(m, n, k, pk):
+    t = pk[1]
+    l, d = ideal_stc.fix_l_d(n, t)
+    #print(l, d)
+    #Generate r
+    r = random_matrix(Integers(2), 1, k)
+    in1 = concat(r, m)
+    B = bin(H1(in1, l))[2:] #StC takes binary strings as input 
+    lv = ideal_stc.StC(B, d, n, t)
+    z = sendrier.positional_to_vector(lv, n)
+    assert vector(z).hamming_weight() == t
     #z = Conv(z, n)
     #print('r', r, 'z', z)
     c1 = classic.encrypt(r, z, pk)
@@ -102,30 +125,28 @@ def generate_all_error_vecs(n, t):
     
     
 def test_original_f_o():
-    global error_vec_list
-    n = 30
-    t = 20
-    k = 15
-    #all_error_gen = generate_all_error_vecs(n, t)
-    #error_vec_list = np.fromiter(all_error_gen, int)
-    #print("Error vectors generated...")
-
-    #print(error_vec_list)
-
-    #print(H(b'hellp', 50, 30))
-        
-    #print(R(b'123', 4))
-
+    n = 4096
+    t = 128
+    k = 2560
     m = random_matrix(Integers(2), 1, k)
     pk, sk = classic.keygen(n, t, k)
     print("Classic McEliece key generated...")
 
+    #Timing Sendrier
     start = timeit.default_timer()
-    c1, c2 = fujisaki_okamoto_encrypt(m, n, k, pk)
+    c1, c2 = fujisaki_okamoto_encrypt_sendrier(m, n, k, pk)
     stop = timeit.default_timer()
     #print(c1)
     #print(c2)
-    print(stop - start)
+    print("Conversion with Sendrier", stop - start)
+    
+    #Timing Barenghi-Pelosi
+    start = timeit.default_timer()
+    c1, c2 = fujisaki_okamoto_encrypt_ideal(m, n, k, pk)
+    stop = timeit.default_timer()
+    #print(c1)
+    #print(c2)
+    print("Conversion with Barenghi-Pelosi", stop - start)
     
 def test_alt_f_o():
     #n = 1024
@@ -143,7 +164,8 @@ def test_alt_f_o():
     stop = timeit.default_timer()
     #print(c1)
     #print(c2)
-    print(stop - start)
+    print("Without Conversion", stop - start)
 
-#test_original_f_o()
-test_alt_f_o()
+for i in range(10):
+    test_original_f_o()
+    #test_alt_f_o()

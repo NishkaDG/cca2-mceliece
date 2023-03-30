@@ -2,6 +2,7 @@ from sage.all_cmdline import *
 from math import ceil, log2
 from random import randrange
 import classic
+import sendrier
 
 def ctcond(cond, t, f):
 	if cond:
@@ -19,6 +20,18 @@ def ctrand(v):
     if v == 0:
         return 0
     return randrange(int(v) + 1)
+    
+def fix_l_d(n, t):
+    u = int((log2(n - t) - 1) / 2)
+    d = int(2 ** u)
+    #print(d)
+    lim1 = t * (1 + int(log2(d)))
+    lim2 = int((n - t) / d)
+    low = min(lim1, lim2)
+    #l = randrange(low)
+    l = int((low - 1) / 8) * 8 
+    assert (l * d) <= (n - t)
+    return l, d
     
 def StC(B, d, n, t):
     l = len(B)
@@ -54,6 +67,7 @@ def StC(B, d, n, t):
         idx = idx + ctcond(lambdadone, 1, 0)
         #print(qdone, rdone, lambdadone, q, r)
         remainingpos = remainingpos - ctcond(lambdadone, lam, 0)
+        #print(remainingpos)
         q = ctcond(lambdadone, 0, q)
         qdone = ctcond(lambdadone, 0, qdone)
         r = ctcond(lambdadone, 0, r)
@@ -82,7 +96,10 @@ def StC(B, d, n, t):
     #print("Case:", casepq, casecq, casepr, lam, rpq, rcq, rpr)
     #print(lambdaVec)
     idx = idx + ctcond(lambdadone, 0, 1)
-    remainingpos = remainingpos - ctcond(lambdadone, lam, 0)
+    #print(remainingpos, lam, lambdadone)
+    #remainingpos = remainingpos - ctcond(lambdadone, 0, lam)
+    remainingpos = remainingpos - lam
+    #print(remainingpos)
     
     for i in range(t):
         r = ctrand(remainingpos)
@@ -90,6 +107,7 @@ def StC(B, d, n, t):
         lam = ctcond((i > idx), r, lam)
         ctstore(lambdaVec, i, lam)
         remainingpos = remainingpos - ctcond((i > idx), lam, 0)
+        #print(remainingpos)
     
     return lambdaVec
     
@@ -113,23 +131,25 @@ def test():
     n = 4096
     t = 128
     for i in range(100):
-        u = randrange(int(log2(n - t) - 1)) + 1
-        d = int(2 ** u)
-        #print(d)
-        lim1 = t * (1 + int(log2(d)))
-        lim2 = int((n - t) / d)
-        low = min(lim1, lim2)
-        l = randrange(low)
-        assert (l * d) <= (n - t)
+        l, d = fix_l_d(n, t)
         B = ''
         for j in range(l):
             B = B + str(randrange(2))
         lv = StC(B, d, n, t)
+        #lv = StC('01100110000', d, n, t)
+        #print(B)
+        #print(d)
+        #print(lv)
+        assert sum(lv) <= (n - t)
+        z = sendrier.positional_to_vector(lv, n)
+        #print(lv)
+        #print(z)
+        assert vector(z).hamming_weight() == t
         b = CtS(lv, d, t, n, l)
-        if not (b == B):
-            print("Error:", i, n, t, d, l, B, lv, b)
+        assert b == B
+        
             
-test()
+#test()
 #lv = StC('100110111000011111001110111110', 32, 4096, 128)        #
 #print(lv)
 #print(CtS(lv, 32, 128, 4096, 30))

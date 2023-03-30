@@ -32,7 +32,7 @@ def positional_to_bitstring(delta_lst, n):
     ctr = 0
     for i in range(n):
         if ctr == delta_lst[delpos]:
-            print('res[', delpos, ']', delta_lst[delpos])
+            #print('res[', delpos, ']', delta_lst[delpos])
             bitstring = bitstring + '1'
             delpos = delpos + 1
             ctr = 0
@@ -40,7 +40,19 @@ def positional_to_bitstring(delta_lst, n):
             bitstring = bitstring + '0'
             ctr = ctr + 1
     assert len(bitstring) == n        
-    return bitstring           
+    return bitstring
+
+def positional_to_vector(delta_lst, n):
+    #print(delta_lst)
+    #print(sum(delta_lst))
+    z = matrix(Integers(2), 1, n)
+    ctr = 0
+    for d in delta_lst:
+        #print(ctr)
+        ctr = ctr + d
+        z[0, ctr] = 1
+        ctr = ctr + 1
+    return z        
 
 def base2(x, u):
     binx = bin(x)[2:]
@@ -91,7 +103,7 @@ def encode_fd(delta, d):
     
 def decode_fd(d, B, start):
     u = ceil(log2(d))
-    print('d', d, 'u', u)
+    #print('d', d, 'u', u)
     delta = read_bits(B, u-1, start)
     start = start + u - 1
     limit = (2 ** u) - d
@@ -134,7 +146,7 @@ def BtoCW(n, t, delta, B, start):
         return []
     elif n <= t:
         res = [delta] + BtoCW(n - 1, t - 1, 0, B, start)
-        print('n', n, 't', t, 'delta', delta, 'B', B, 'res', res)
+        #print('n', n, 't', t, 'delta', delta, 'B', B, 'res', res)
         return res
     else:
         d = best_d(n, t)
@@ -143,14 +155,14 @@ def BtoCW(n, t, delta, B, start):
         start = start + 1
         if next_bit == 1:
             res = BtoCW(n - d, t, delta + d, B, start)
-            print('n', n, 't', t, 'd', d, 'delta', delta, 'B', B, 'res', res)
+            #print('n', n, 't', t, 'd', d, 'delta', delta, 'B', B, 'res', res)
             return res
         else:
             i, start = decode_fd(d, B, start)
             #i, start = decode_fd(d, B, 0)
             #print('i', i, 'd', d)
             res = [delta + i] + BtoCW(n - i - 1, t - 1, 0, B, start)
-            print('n', n, 't', t, 'd', d, 'i', i, 'start', start, 'delta', delta, 'B', B, 'res', res)
+            #print('n', n, 't', t, 'd', d, 'i', i, 'start', start, 'delta', delta, 'B', B, 'res', res)
             return res
 
 def test_decode_encode_fd():
@@ -313,5 +325,6 @@ print("CWtoB always returns the same output on an input")
 
 test_conversion_bijective()
 print("BtoCW(CWtoB()) works")
-'''
+
 test_reverse_bijection()
+'''
