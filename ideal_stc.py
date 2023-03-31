@@ -1,26 +1,41 @@
+'''
+This file contains an implementation of the string-to-constant-weight-vector conversion function described in
+Alessandro Barenghi and Gerardo Pelosi. “Constant weight strings in constant time: a building block for code-based post-quantum cryptosystems”. In: Proceedings of the
+17th ACM International Conference on Computing Frontiers (2020).
+Note that there are slight differences from the algorithm described in the figures in the paper; this follows more closely the prose description in the paper than the pseudocode.
+'''
+
 from sage.all_cmdline import *
 from math import ceil, log2
 from random import randrange
-import classic
-import sendrier
+import auxiliary
 
+#Takes as input a boolean cond, and two values t and f 
+#Returns t if cond is true, f otherwise
 def ctcond(cond, t, f):
 	if cond:
 		return t
 	else:
 		return f
-        
+
+#Stores an element in an array at the given position        
 def ctstore(arr, pos, v):
+    #print("ctstore pos", pos)
     arr[pos] = v
-    
+
+#Returns the element stored at a given position in the array    
 def ctload(arr, pos):
+    #print("ctload pos", pos)
     return arr[pos]
-    
+
+#Returns a random value in the given range    
 def ctrand(v):
+    #print(v)
     if v == 0:
         return 0
     return randrange(int(v) + 1)
-    
+
+#Chooses appropriate values for l, d based on n, t    
 def fix_l_d(n, t):
     u = int((log2(n - t) - 1) / 2)
     d = int(2 ** u)
@@ -32,10 +47,12 @@ def fix_l_d(n, t):
     l = int((low - 1) / 8) * 8 
     assert (l * d) <= (n - t)
     return l, d
-    
+
+#Converts a binary string B to a vector of weight t (represented as run-length encodings)   
 def StC(B, d, n, t):
     l = len(B)
     lambdaVec = [0] * t
+    #print("StC", B, d, l, n, t)
     
     qdone = 0
     rdone = 0
@@ -110,7 +127,8 @@ def StC(B, d, n, t):
         #print(remainingpos)
     
     return lambdaVec
-    
+
+#Converts a vector of weight t (represented as run-length encodings) to a binary string of fixed length   
 def CtS(lambdaVec, d, n, t, l):
     B = ''
     for lam in lambdaVec:
@@ -126,7 +144,8 @@ def CtS(lambdaVec, d, n, t, l):
         B = B + sub 
     relevant_B = B[:l]
     return relevant_B
-    
+
+#Test of the correctness and invertibility of the conversion function    
 def test():
     n = 4096
     t = 128
@@ -141,7 +160,7 @@ def test():
         #print(d)
         #print(lv)
         assert sum(lv) <= (n - t)
-        z = sendrier.positional_to_vector(lv, n)
+        z = auxiliary.positional_to_vector(lv, n)
         #print(lv)
         #print(z)
         assert vector(z).hamming_weight() == t

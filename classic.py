@@ -1,3 +1,7 @@
+'''
+This file contains an implementation of Classic McEliece PKC
+'''
+
 #TODO: What is the relationship between t and k
 #Actual goppa decryption + generation (sage has a goppa library that can be used as placeholder)
 
