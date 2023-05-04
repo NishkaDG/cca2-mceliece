@@ -151,13 +151,14 @@ def generate_all_error_vecs(n, t):
         val = val+minbit | (fillbit//(minbit<<1))-1
 
 #Test of the Fujisaki-Okamoto protocol as implemented with the two different conversion functions        
-def test_original_f_o():
-    n = 4096
-    t = 128
-    k = 2560
+def test_original_f_o(n, t, k):
+    #n = 4096
+    #t = 128
+    #k = 2560
+    print("Testing the Fujisaki-Okamoto transform with n=", n, "t=", t, "k=", k)
     m = random_matrix(Integers(2), 1, k)
     pk, sk = classic.keygen(n, t, k)
-    #print("Classic McEliece key generated...")
+    print("Classic McEliece key generated...")
     
     num_iter = 10000
     duration_sendrier = 0
@@ -189,26 +190,32 @@ def test_alt_f_o():
     #n = 1024
     #t = 50
     #k = 524
-    n = 2048
-    t = 29
-    k = 2000
-    m = random_matrix(Integers(2), 1, k)
-    pk, sk = classic.keygen(n, t, k)
-    print("Classic McEliece key generated...")
-
-    start = timeit.default_timer()
-    c1, c2 = alt_fujisaki_okamoto_encrypt(m, n, k, pk)
-    stop = timeit.default_timer()
-    #print(c1)
-    #print(c2)
-    print("Without Conversion", stop - start)
-
-#Test of the Kobara-Imai alpha protocol
-def test_kobara_imai():
     n = 4096
     t = 128
     k = 2560
+    m = random_matrix(Integers(2), 1, k)
+    pk, sk = classic.keygen(n, t, k)
+    print("Classic McEliece key generated...")
     
+    num_iter = 10
+    duration = 0
+    
+    for i in range(num_iter):
+        start = timeit.default_timer()
+        c1, c2 = alt_fujisaki_okamoto_encrypt(m, n, k, pk)
+        stop = timeit.default_timer()
+        duration += stop - start 
+    #print(c1)
+    #print(c2)
+    print("Without Conversion", duration / num_iter)
+
+#Test of the Kobara-Imai alpha protocol
+def test_kobara_imai(n, t, k):
+    #n = 4096
+    #t = 128
+    #k = 2560
+    
+    print("Testing the Kobara-Imai alpha transform with n=", n, "t=", t, "k=", k)
     m = random_matrix(Integers(2), 1, k + 500)
     pk, sk = classic.keygen(n, t, k)
     const = random_matrix(Integers(2), 1, 160)
@@ -223,6 +230,10 @@ def test_kobara_imai():
         duration += stop - start
     print("Average encryption time of Kobara-Imai alpha", duration / num_iter)
 
-#test_original_f_o()
+#test_original_f_o(1024, 38, 644)
+#test_original_f_o(2048, 69, 1289)
+#test_original_f_o(4096, 128, 2560)
 #test_alt_f_o()
-#test_kobara_imai()
+test_kobara_imai(1024, 28, 644)
+test_kobara_imai(2048, 69, 1289)
+test_kobara_imai(4096, 128, 2560)
