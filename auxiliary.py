@@ -5,6 +5,7 @@ This file contains miscellaneous conversion functions, hash functions, and other
 from sage.all_cmdline import *   # import sage library
 from Crypto.Hash import SHAKE256
 from math import ceil, floor, log2
+from random import randrange
 
 #Takes an integer input num and a bitlength length
 #Returns a vector (as a list) of the binary representation of num in exactly length bits
@@ -60,7 +61,7 @@ def vector_to_bytes(vec):
 def concat_vectors(v1, v2):
     assert v1.nrows() == 1 and v2.nrows() == 1
     new_len = v1.ncols() + v2.ncols()
-    res = matrix(Integers(2), 1, new_len)
+    res = matrix(GF(2), 1, new_len)
     len_1 = v1.ncols()
     for i in range(new_len):
         if i < len_1:
@@ -76,6 +77,15 @@ def vector_to_bitstring(vec):
     for bit in vec[0]:
         B = B + str(bit)
     return B
+    
+#Takes as input bitstring
+#Returns the bitstring as a vector (sagemath row matrix)
+def bitstring_to_vector(bitstring):
+    n = len(bitstring)
+    vec = matrix(GF(2), 1, n)
+    for i in range(n):
+        vec[0, i] = int(bitstring[i])
+    return vec
 
 #Takes an input bitstring 
 #Returns the bitstring as a bytearray    
@@ -120,7 +130,6 @@ def positional_to_bitstring(delta_lst, n):
     ctr = 0
     for i in range(n):
         if ctr == delta_lst[delpos]:
-            #print('res[', delpos, ']', delta_lst[delpos])
             bitstring = bitstring + '1'
             delpos = delpos + 1
             ctr = 0
@@ -133,12 +142,9 @@ def positional_to_bitstring(delta_lst, n):
 #Takes as input a bitlength n and list delta_lst of run-length encodings as above 
 #Returns a sagemath row matrix of the corresponding bitstring. 
 def positional_to_vector(delta_lst, n):
-    #print(delta_lst)
-    #print(sum(delta_lst))
-    z = matrix(Integers(2), 1, n)
+    z = matrix(GF(2), 1, n)
     ctr = 0
     for d in delta_lst:
-        #print(ctr)
         ctr = ctr + d
         z[0, ctr] = 1
         ctr = ctr + 1
@@ -148,7 +154,7 @@ def positional_to_vector(delta_lst, n):
 #Returns a new vector (sagemath row matrix) consisting of the x least significant bits of vec    
 def LSB(vec, x):
     assert vec.ncols() >= x
-    res = matrix(Integers(2), 1, x)
+    res = matrix(GF(2), 1, x)
     start = vec.ncols() - x 
     for i in range(x):
         res[0, i] = vec[0, i + start]
@@ -158,7 +164,7 @@ def LSB(vec, x):
 #Returns a new vector (sagemath row matrix) consisting of the x most significant bits of vec        
 def MSB(vec, x):
     assert vec.ncols() >= x 
-    res = matrix(Integers(2), 1, x)
+    res = matrix(GF(2), 1, x)
     for i in range(x):
         res[0, i] = vec[0, i]
     return res
@@ -178,16 +184,16 @@ def H(bitstring, n, t):
     return h
 
 #Takes as input a bitstring (as bytes), and a bitlength k to hash to 
-#Returns the SHAKE256 XOF output of the bitstring in k bits as an integer 
+#Returns the SHAKE256 XOF output of the bitstring in k bits as a bitstring 
 def H1(bitstring, k):
     bytelength = int(ceil(k / 8))
-    #print(k, 2**k)
     
     shake = SHAKE256.new()
     shake.update(bitstring)
     h = shake.read(bytelength).hex()
     h = int(h, 16) % (2 ** k)
-    return h
+    binh = pad_as_bitstring(h, k)
+    return binh
 
 #Takes as input a bitstring r (as bytes) and a bitlength k to hash to 
 #Returns the SHAKE256 XOF output of the bitstring in k bits as a sagemath matrix 
@@ -197,5 +203,23 @@ def R(r, k):
     shake.update(r)
     h_hex = shake.read(bytelength).hex()
     h_list = pad_as_list(int(h_hex, 16), k)
-    h_vec = matrix(Integers(2), h_list)
+    h_vec = matrix(GF(2), h_list)
     return h_vec
+
+def test_positional_vector_interconversion():
+    num_iter = 10000
+    
+    for i in range(num_iter):
+        n = randrange(2, 200)
+        t = randrange(n//2)
+        lv = []
+        lim = n-t
+        for i in range(t):
+            lv.append(randrange(lim - sum(lv)))
+        v = positional_to_vector(lv, n)
+        lv2 = vector_to_positional(v)
+        if not (lv == lv2):
+            print("Failure!", v, lv, lv2)
+            break
+    
+#test_positional_vector_interconversion()

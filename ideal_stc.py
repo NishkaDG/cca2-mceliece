@@ -39,11 +39,9 @@ def ctrand(v):
 def fix_l_d(n, t):
     u = int((log2(n - t) - 1) / 2)
     d = int(2 ** u)
-    #print(d)
     lim1 = t * (1 + int(log2(d)))
     lim2 = int((n - t) / d)
     low = min(lim1, lim2)
-    #l = randrange(low)
     l = int((low - 1) / 8) * 8 
     assert (l * d) <= (n - t)
     return l, d
@@ -52,7 +50,6 @@ def fix_l_d(n, t):
 def StC(B, d, n, t):
     l = len(B)
     lambdaVec = [0] * t
-    #print("StC", B, d, l, n, t)
     
     qdone = 0
     rdone = 0
@@ -69,54 +66,36 @@ def StC(B, d, n, t):
     for ind in range(len(B)):
         ch = B[ind]
         b = int(ch)
-        #print(ind, b, idx)
         qdone = qdone | (1 - b)
-        #print(qdone)
         q = q + (b & (1 - qdone))
-        #print(q)
         rbitctr = rbitctr + qdone 
         rdone = (rbitctr == (int(log2(d)) + 1))
         r = 2 * r + (b & qdone)
         lam = q * d + r 
         ctstore(lambdaVec, idx, lam)
-        #print(lambdaVec)
         lambdadone = qdone & rdone 
         idx = idx + ctcond(lambdadone, 1, 0)
-        #print(qdone, rdone, lambdadone, q, r)
         remainingpos = remainingpos - ctcond(lambdadone, lam, 0)
-        #print(remainingpos)
         q = ctcond(lambdadone, 0, q)
         qdone = ctcond(lambdadone, 0, qdone)
         r = ctcond(lambdadone, 0, r)
         rbitctr = ctcond(lambdadone, 0, rbitctr)
-        #print(qdone, rdone, lambdadone, q, r)
     
     #Now bar(lambda)
     casepq = 1 - qdone #Part of the quotient is in s
     rpq = ctrand(remainingpos - lam)
     lam = lam + ctcond(casepq, rpq, 0)
-    #lambdaVec[idx] =  lam
-    #print(lam, casepq, rpq)
     casecq = qdone & (rbitctr == 1) #Whole quotient is in s
-    #rcq = ((rpq > (d - 1)) & (d - 1)) | ((1 - (rpq > (d - 1))) & rpq)
     rcq = min(d - 1, remainingpos - q * d)
     rcq = ctrand(rcq)
     lam = lam + ctcond(casecq, rcq, 0)
-    #lambdaVec[idx] =  lam
-    #print(lam, casecq, rcq)
     casepr = qdone & (1 - rdone) & (rbitctr > 1) #Whole quotient + part of remainder is in s
     pow2r = int(2 ** (log2(d) - rbitctr + 1))
-    #print(q, d, r, pow2r)
     rpr = q * d + r * pow2r + ctrand(pow2r - 1)
     lam = ctcond(casepr, rpr, lam)
     lambdaVec[idx] =  lam
-    #print("Case:", casepq, casecq, casepr, lam, rpq, rcq, rpr)
-    #print(lambdaVec)
     idx = idx + ctcond(lambdadone, 0, 1)
-    #print(remainingpos, lam, lambdadone)
-    #remainingpos = remainingpos - ctcond(lambdadone, 0, lam)
     remainingpos = remainingpos - lam
-    #print(remainingpos)
     
     for i in range(t):
         r = ctrand(remainingpos)
@@ -124,7 +103,6 @@ def StC(B, d, n, t):
         lam = ctcond((i > idx), r, lam)
         ctstore(lambdaVec, i, lam)
         remainingpos = remainingpos - ctcond((i > idx), lam, 0)
-        #print(remainingpos)
     
     return lambdaVec
 
@@ -146,29 +124,25 @@ def CtS(lambdaVec, d, n, t, l):
     return relevant_B
 
 #Test of the correctness and invertibility of the conversion function    
-def test():
-    n = 4096
-    t = 128
-    for i in range(100):
+def test(n, t):
+    num_iter = 10000
+    for i in range(num_iter):
+        if (i % (num_iter / 10)) == 0:
+            print(i, "iterations...")
         l, d = fix_l_d(n, t)
         B = ''
         for j in range(l):
             B = B + str(randrange(2))
         lv = StC(B, d, n, t)
-        #lv = StC('01100110000', d, n, t)
-        #print(B)
-        #print(d)
-        #print(lv)
         assert sum(lv) <= (n - t)
         z = auxiliary.positional_to_vector(lv, n)
-        #print(lv)
-        #print(z)
         assert vector(z).hamming_weight() == t
         b = CtS(lv, d, t, n, l)
         assert b == B
-        
-            
-#test()
+                    
+#test(1024, 38)
+#test(2048, 69)
+#test(4096, 128)
 #lv = StC('100110111000011111001110111110', 32, 4096, 128)        #
 #print(lv)
 #print(CtS(lv, 32, 128, 4096, 30))

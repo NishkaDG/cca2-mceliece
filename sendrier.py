@@ -14,7 +14,6 @@ import classic
 #Returns the u least significant bits of the binary conversion of the integer
 def base2(x, u):
     binx = bin(x)[2:]
-    #print(binx, len(binx), u)
     if u > 0:
         if len(binx) >= u:
             return binx[-u:]
@@ -28,7 +27,6 @@ def base2(x, u):
 #Takes as input a bitstring B, a number of bits to read u, and a starting index 
 #Returns a substring of u bits read from index start, converted to a decimal integer
 def read_bits(B, u, start):
-    #print('read_bits', B, u, start)
     if start < 0:
         return 0
     substr = B[start:start+u]
@@ -41,23 +39,17 @@ def read_bits(B, u, start):
 #Returns an optimal value of d  
 def best_d(n, t):
     d = ceil((n - ((t - 1) / 2)) * (1 - (1 / (2 ** (1 / t)))))
-    #ex = int(ceil(log2(d))) - 1
-    #d = 2 ** ex
     assert (1 <= d) and (d <= (n - t))
     return d
 
 #An implementation of f_d() function in the paper    
 def encode_fd(delta, d):
     u = ceil(log2(d))
-    #print('u', u)
     limit = (2 ** u) - d
-    #print('delta', delta, 'limit', limit)
     if delta < limit:
         u = u - 1
     else:
         delta = delta + limit
-    #print('delta', delta)
-    #print('base2', base2(delta, u))
     res = base2(delta, u)
     if res is None:
         return ''
@@ -82,52 +74,40 @@ def CWtoB(n, t, delta_tuple):
         return ''
     d = best_d(n, t)
     delta_1 = delta_tuple[0]
-    #print('n', n, 't', t, 'd', d, 'delta_1', delta_1)
     if delta_1 >= d:
         new_delta_lst = list(delta_tuple)
         new_delta_lst[0] = delta_1 - d
         new_delta_tuple = tuple(new_delta_lst)
-        #print('new_delta_tuple', new_delta_tuple)
         res = '1' + CWtoB(n - d, t, new_delta_tuple)
-        #print('n', n, 't', t, 'd', d, 'res', res)
         return res
     else:
         enc = encode_fd(delta_1, d)
         s = '0'
         if not (enc is None):
             s = '0' + enc
-        #print('s', s)
         new_delta_lst = list(delta_tuple)
         new_delta_lst = new_delta_lst[1:]
         new_delta_tuple = tuple(new_delta_lst)
-        #print('new_delta_tuple', new_delta_tuple)
         res = s + CWtoB(n - delta_1 - 1, t - 1, new_delta_tuple)
-        #print('n', n, 't', t, 'd', d, 'res', res, 'delta_1', delta_1, n-delta_1 - 1)
         return res
 
 #A recursive function to convert an arbitrary binary string to a list of run-length encodings representing a vector of weight t        
 def BtoCW(n, t, delta, B, start):
-    #print('n', n, 't', t, 'delta', delta, 'B', B)
     if t == 0:
         return []
     elif n <= t:
         res = [delta] + BtoCW(n - 1, t - 1, 0, B, start)
-        #print('n', n, 't', t, 'delta', delta, 'B', B, 'res', res)
         return res
     else:
         d = best_d(n, t)
         next_bit = read_bits(B, 1, start)
-        #print('next_bit', next_bit, 'd', d)
         start = start + 1
         if next_bit == 1:
             res = BtoCW(n - d, t, delta + d, B, start)
-            #print('n', n, 't', t, 'd', d, 'delta', delta, 'B', B, 'res', res)
             return res
         else:
             i, start = decode_fd(d, B, start)
-            #print('i', i, 'd', d)
             res = [delta + i] + BtoCW(n - i - 1, t - 1, 0, B, start)
-            #print('n', n, 't', t, 'd', d, 'i', i, 'start', start, 'delta', delta, 'B', B, 'res', res)
             return res
 
 #Test that the functions for f_d and its inverse work correctly for random inputs
@@ -145,7 +125,7 @@ def test_encode_decode_fd():
         exp = randrange(12)
         d = 2 ** exp
         u = ceil(log2(d))
-        r = random_matrix(Integers(2), 1, u)
+        r = random_matrix(GF(2), 1, u)
         B = ''
         for ele in r[0]:
             B = B + str(ele)
@@ -162,7 +142,7 @@ def test_BtoCW_weight():
     bitlength = int(ceil(log2(nct)))
     #print(bitlength)
     for i in range(100):
-        r = random_matrix(Integers(2), 1, bitlength)
+        r = random_matrix(GF(2), 1, bitlength)
         B = ''
         for ele in r[0]:
             B = B + str(ele)
@@ -191,7 +171,7 @@ def test_BtoCW_unique():
     t = 29
     nct = int(ceil(factorial(n)/(factorial(t) * factorial(n-t))))
     bitlength = int(ceil(log2(nct)))
-    r = random_matrix(Integers(2), 1, bitlength)
+    r = random_matrix(GF(2), 1, bitlength)
     B = ''
     for ele in r[0]:
         B = B + str(ele)
@@ -211,7 +191,7 @@ def test_BtoCW_unique():
 def test_CWtoB_unique():
     n = 2048
     t = 29
-    r = random_matrix(Integers(2), 1, n)
+    r = random_matrix(GF(2), 1, n)
     classic.select_error(r, t, n)
     delta_lst = []
     ctr = 0
@@ -238,8 +218,7 @@ def test_conversion_bijective():
     print(bitlength)
     for i in range(10):
         print("Test", i)
-        #r = random_matrix(Integers(2), 1, bitlength)
-        r = random_matrix(Integers(2), 1, n)
+        r = random_matrix(GF(2), 1, n)
         classic.select_error(r, t, n)
         delta_lst = []
         ctr = 0
@@ -262,7 +241,7 @@ def test_reverse_bijection():
     nct = int(ceil(factorial(n)/(factorial(t) * factorial(n-t))))
     bitlength = int(ceil(log2(nct))) - 1
     for i in range(1):
-        r = random_matrix(Integers(2), 1, bitlength)
+        r = random_matrix(GF(2), 1, bitlength)
         B = ''
         B = '00010011111100001'
         delta_lst = BtoCW(n, t, 0, B, 0)
