@@ -3,7 +3,7 @@ This file contains miscellaneous conversion functions, hash functions, and other
 '''
 
 from sage.all_cmdline import *   # import sage library
-from Crypto.Hash import SHAKE256
+from Crypto.Hash import SHAKE256, KMAC256
 from math import ceil, floor, log2
 from random import randrange
 
@@ -196,12 +196,13 @@ def H1(bitstring, k):
     return binh
 
 #Takes as input a bitstring r (as bytes) and a bitlength k to hash to 
-#Returns the SHAKE256 XOF output of the bitstring in k bits as a sagemath matrix 
+#Returns the KMAC output (based on Keccak) of the bitstring in k bits as a sagemath matrix 
 def R(r, k):
     bytelength = int(ceil(k / 8))
-    shake = SHAKE256.new()
-    shake.update(r)
-    h_hex = shake.read(bytelength).hex()
+    secret = b'This is really a pseudorandom function'
+    kmac = KMAC256.new(key=secret, mac_len=bytelength)
+    kmac.update(r)
+    h_hex = kmac.hexdigest()
     h_list = pad_as_list(int(h_hex, 16), k)
     h_vec = matrix(GF(2), h_list)
     return h_vec
