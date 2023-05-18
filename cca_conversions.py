@@ -102,7 +102,7 @@ def fujisaki_okamoto_decrypt_ideal(c1, c2, pk, sk):
 #Encryption with the Fujisaki-Okamoto transform that does not use the conversion function (from Cayrel et al)
 def alt_fujisaki_okamoto_encrypt(m, n, k, pk):
     t = pk[1]
-    r = random_matrix(GF(2), 1, n)
+    r = matrix(GF(2), 1, n)
     classic.select_error(r, t, n)
     assert vector(r).hamming_weight() == t
     in1 = auxiliary.concat_vectors_to_bytearray(r, m)
@@ -235,7 +235,7 @@ def time_original_f_o(n, t, m):
     k = pk[0].nrows()
     msg = random_matrix(GF(2), 1, k)
     
-    num_iter = 10
+    num_iter = 100
     duration_sendrier_enc = 0
     duration_sendrier_dec = 0
     duration_ideal_enc = 0
@@ -249,8 +249,8 @@ def time_original_f_o(n, t, m):
         c1, c2 = fujisaki_okamoto_encrypt_sendrier(msg, n, k, pk)
         stop_enc = timeit.default_timer()
         d = fujisaki_okamoto_decrypt_sendrier(c1, c2, pk, sk)
-        assert d == msg
         stop_dec = timeit.default_timer()
+        assert d == msg
         duration_sendrier_enc += (stop_enc - start_enc)
         duration_sendrier_dec += stop_dec - stop_enc
         
@@ -259,8 +259,8 @@ def time_original_f_o(n, t, m):
         c1, c2 = fujisaki_okamoto_encrypt_ideal(msg, n, k, pk)
         stop_enc = timeit.default_timer()
         d = fujisaki_okamoto_decrypt_ideal(c1, c2, pk, sk)
-        assert d == msg
         stop_dec = timeit.default_timer()
+        assert d == msg
         duration_ideal_enc += (stop_enc - start_enc)
         duration_ideal_dec += (stop_dec - stop_enc)
     print("Average encryption time of Fujisaki-Okamoto with Sendrier's conversion", duration_sendrier_enc / num_iter)
@@ -275,7 +275,7 @@ def time_alt_f_o(n, t, m):
     k = pk[0].nrows()
     msg = random_matrix(GF(2), 1, k)
 
-    num_iter = 1
+    num_iter = 10
     duration_enc = 0
     duration_dec = 0
     
@@ -286,8 +286,8 @@ def time_alt_f_o(n, t, m):
         c1, c2 = alt_fujisaki_okamoto_encrypt(msg, n, k, pk)
         stop_enc = timeit.default_timer()
         d = alt_fujisaki_okamoto_decrypt(c1, c2, pk, sk)
-        assert d == msg
         stop_dec = timeit.default_timer()
+        assert d == msg
         duration_enc += stop_enc - start_enc 
         duration_dec += stop_dec - stop_enc
     print("Average encryption time of Fujisaki-Okamoto without Conversion", duration_enc / num_iter)
@@ -312,8 +312,8 @@ def time_kobara_imai(n, t, m):
         c1, c2 = kobara_imai_alpha_encrypt(msg, n, k, pk)
         stop_enc = timeit.default_timer()
         d = kobara_imai_alpha_decrypt(c1, c2, pk, sk)
-        assert d == msg
         stop_dec = timeit.default_timer()
+        assert d == msg
         duration_enc += stop_enc - start_enc
         duration_dec += stop_dec - stop_enc
     print("Average encryption time of Kobara-Imai alpha", duration_enc / num_iter)
@@ -323,6 +323,8 @@ def time_kobara_imai(n, t, m):
 #time_original_f_o(2048, 69, 11)
 #time_original_f_o(4096, 128, 12)
 #time_alt_f_o(1024, 38, 10)
+#time_alt_f_o(2048, 69, 11)
+#time_alt_f_o(4096, 128, 12)
 #time_kobara_imai(1024, 38, 10)
 #time_kobara_imai(2048, 69, 11)
 #time_kobara_imai(4096, 128, 12)
