@@ -1,8 +1,20 @@
 '''
+Author: Nishka Dasgupta
+
 An implementation of the string-to-constant-weight-vector conversion protocol found in 
 Nicolas Sendrier. “Encoding information into constant weight words”. In: Proceed-
 ings. International Symposium on Information Theory, 2005. ISIT 2005. 2005,
 pp. 435–438. doi: 10.1109/ISIT.2005.1523371
+
+Functions:
+ - base2: Convert an integer to u bits 
+ - read_bits: Reads a slice of a bitstring 
+ - best_d: The optimal value of d 
+ - encode_fd: An implementation of f_d() in the paper 
+ - decode_fd: An implementation of f_d()^{-1} in the paper 
+ - CWtoB: Conversion of constant-weight-vector to binary string 
+ - BtoCW: Conversion of binary string to constant-weight-vector
+ - Various tests
 '''
 
 from sage.all_cmdline import *   # import sage library
@@ -56,7 +68,7 @@ def encode_fd(delta, d):
     else:
         return res
 
-#An implementation of the inverse of the f_d function in the paper    
+#An implementation of the inverse of the f_d() function in the paper    
 def decode_fd(d, B, start):
     u = ceil(log2(d))
     #print('d', d, 'u', u)

@@ -1,8 +1,20 @@
 '''
-This file contains an implementation of the string-to-constant-weight-vector conversion function described in
+Author: Nishka Dasgupta
+
+An implementation of the string-to-constant-weight-vector conversion function described in
 Alessandro Barenghi and Gerardo Pelosi. “Constant weight strings in constant time: a building block for code-based post-quantum cryptosystems”. In: Proceedings of the
 17th ACM International Conference on Computing Frontiers (2020).
 Note that there are slight differences from the algorithm described in the figures in the paper; this follows more closely the prose description in the paper than the pseudocode.
+
+Functions:
+ - ctcond: Checks a condition and executes a branch accordingly
+ - ctstore: Stores element in array 
+ - ctload: Loads an element from an array 
+ - ctrand: Returns a random value 
+ - fix_l_d: Chooses appropriate l, d for the protocol
+ - StC: string-to-constant-weight-vector function
+ - CtS: constant-weight-vector-to-string function 
+ - test: Test invertibility
 '''
 
 from sage.all_cmdline import *

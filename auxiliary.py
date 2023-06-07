@@ -1,9 +1,31 @@
 '''
-This file contains miscellaneous conversion functions, hash functions, and other helper functions for the other programs.
+Author: Nishka Dasgupta
+
+This file contains miscellaneous conversion functions, hash functions, and other helper functions for the other programs. See work referenced in sendrier.py and ideal.py on Golomb encoding.
+
+Functions:
+ - pad_as_list: Pads or truncates the binary representation of a number as a list 
+ - pad_as_bitstring: Pads or truncates the binary representation of a number as a 
+ - concat_vectors: Concatenates vectors into a new vector
+ - concat_vectors_to_bytearray: Concatenates vectors as bytes (for hash input)
+ - vector_to_bitstring: Converts binary vector to bitstring
+ - vector_to_bytes: Converts binary vector to bytes (for hash input)
+ - vector_to_positional: Converts a binary vector to its Golomb run-length encoding
+ - bitstring_to_vector: Converts a bitstring to a binary vector
+ - bitstring_to_bytes: Converts a bitstring to bytes
+ - bitstring_to_positional: Converts a bitstring to its Golomb run-length encoding 
+ - positional_to_vector: Converts a Golomb run-length encoding to a binary vector
+ - positional_to_bitstring: Converts a Golomb run-length encoding to a bitstring
+ - LSB: least significant bits
+ - MSB: Most significant bits 
+ - H: cSHAKE256 hash output in n choose t bits
+ - H1: cSHAKE256 hash output in custom bits 
+ - R: cSHAKE256 hash output in custom bits (different custom string from H1 for different distribution)
+ - test_positional_vector_interconversion: Test
 '''
 
 from sage.all_cmdline import *   # import sage library
-from Crypto.Hash import SHAKE256, KMAC256
+from Crypto.Hash import cSHAKE256
 from math import ceil, floor, log2
 from random import randrange
 
@@ -38,24 +60,6 @@ def pad_as_bitstring(num, length):
         res = res + i 
     return res
 
-#Takes inputs two vectors (sagemath 1 * ncols matrix) 
-#Returns a bytearray of the concatenation of these vectors
-def concat_vectors_to_bytearray(vec1, vec2):
-    cc = bytearray(b'\x00')
-    for i in vec1[0]:
-        cc.append(i)
-    for i in vec2[0]:
-        cc.append(i)
-    return cc
-
-#Takes as input a single vector (sagemath 1 * ncols matrix) 
-#Returns the bytearray conversion of the vector   
-def vector_to_bytes(vec):
-    cc = bytearray(b'\x00')
-    for i in vec[0]:
-        cc.append(i)
-    return cc
-
 #Takes as inputs two vectors (sagemath 1 * ncols matrices) 
 #Returns their concatenation as a sagemath matrix
 def concat_vectors(v1, v2):
@@ -70,6 +74,16 @@ def concat_vectors(v1, v2):
             res[0, i] = v2[0, i - len_1]
     return res
 
+#Takes inputs two vectors (sagemath 1 * ncols matrix) 
+#Returns a bytearray of the concatenation of these vectors
+def concat_vectors_to_bytearray(vec1, vec2):
+    cc = bytearray(b'\x00')
+    for i in vec1[0]:
+        cc.append(i)
+    for i in vec2[0]:
+        cc.append(i)
+    return cc
+
 #Takes as input a vector (sagemath row matrix)
 #Returns the bitstring (elements of the vector concatenated into a string)    
 def vector_to_bitstring(vec):
@@ -77,6 +91,27 @@ def vector_to_bitstring(vec):
     for bit in vec[0]:
         B = B + str(bit)
     return B
+    
+#Takes as input a single vector (sagemath 1 * ncols matrix) 
+#Returns the bytearray conversion of the vector   
+def vector_to_bytes(vec):
+    cc = bytearray(b'\x00')
+    for i in vec[0]:
+        cc.append(i)
+    return cc
+
+#Takes an input sagemath row matrix vec 
+#Returns the run-length encoding of the bitstring, i.e, the number of consecutive 0s preceding each occurrence of 1, as a list
+def vector_to_positional(vec):
+    delta_lst = []
+    ctr = 0
+    for ele in vec[0]:
+        if int(ele) == 1:
+            delta_lst.append(ctr)
+            ctr = 0
+        else:
+            ctr = ctr + 1
+    return delta_lst
     
 #Takes as input bitstring
 #Returns the bitstring as a vector (sagemath row matrix)
@@ -96,7 +131,7 @@ def bitstring_to_bytes(bitstring):
     return cc
 
 #Takes an input bitstring 
-#Returns the run-length encoding of the bitstring, i.e, the number of consecutive 0s preceding each occurrence of 1, as a list
+#Returns the run-length encoding of the bitstring
 def bitstring_to_positional(bitstring):
     delta_lst = []
     ctr = 0
@@ -108,19 +143,17 @@ def bitstring_to_positional(bitstring):
             ctr = ctr + 1
     return delta_lst
 
-#Takes an input sagemath row matrix vec 
-#Returns the run-length encoding of the bitstring as above
-def vector_to_positional(vec):
-    delta_lst = []
+#Takes as input a bitlength n and list delta_lst of run-length encodings as above 
+#Returns a sagemath row matrix of the corresponding bitstring. 
+def positional_to_vector(delta_lst, n):
+    z = matrix(GF(2), 1, n)
     ctr = 0
-    for ele in vec[0]:
-        if int(ele) == 1:
-            delta_lst.append(ctr)
-            ctr = 0
-        else:
-            ctr = ctr + 1
-    return delta_lst
-
+    for d in delta_lst:
+        ctr = ctr + d
+        z[0, ctr] = 1
+        ctr = ctr + 1
+    return z      
+    
 #Takes as input a bitlength n and list delta_lst of run-length encodings i.e, the number of consecutive 0s preceding each occurrence of 1
 #Returns the corresponding bitstring 
 def positional_to_bitstring(delta_lst, n):
@@ -137,18 +170,7 @@ def positional_to_bitstring(delta_lst, n):
             bitstring = bitstring + '0'
             ctr = ctr + 1
     assert len(bitstring) == n        
-    return bitstring
-
-#Takes as input a bitlength n and list delta_lst of run-length encodings as above 
-#Returns a sagemath row matrix of the corresponding bitstring. 
-def positional_to_vector(delta_lst, n):
-    z = matrix(GF(2), 1, n)
-    ctr = 0
-    for d in delta_lst:
-        ctr = ctr + d
-        z[0, ctr] = 1
-        ctr = ctr + 1
-    return z        
+    return bitstring  
 
 #Takes as input a vector (sagemath row matrix) vec and an integer x 
 #Returns a new vector (sagemath row matrix) consisting of the x least significant bits of vec    
@@ -170,13 +192,14 @@ def MSB(vec, x):
     return res
 
 #Takes as input a bitstring (as bytes), n, t 
-#Returns the SHAKE256 XOF output of the bitstring in C(n,t) bits as an integer
+#Returns the cSHAKE256 XOF output of the bitstring in C(n,t) bits as an integer
 def H(bitstring, n, t):
     nct = int(ceil(factorial(n)/(factorial(t) * factorial(n-t))))
     bitlength = int(ceil(log(nct, 2).n()))
     bytelength = int(ceil(bitlength / 8))
+    secret = b'Hash function to Random Oracle as integer'
     
-    shake = SHAKE256.new()
+    shake = cSHAKE256.new(custom=secret)
     shake.update(bitstring)
     h = shake.read(bytelength).hex()
     h = int(h, 16) % nct
@@ -184,11 +207,12 @@ def H(bitstring, n, t):
     return h
 
 #Takes as input a bitstring (as bytes), and a bitlength k to hash to 
-#Returns the SHAKE256 XOF output of the bitstring in k bits as a bitstring 
+#Returns the cSHAKE256 XOF output of the bitstring in k bits as a bitstring 
 def H1(bitstring, k):
     bytelength = int(ceil(k / 8))
     
-    shake = SHAKE256.new()
+    secret = b'Hash function to Random Oracle as bitstring'
+    shake = cSHAKE256.new(custom=secret)
     shake.update(bitstring)
     h = shake.read(bytelength).hex()
     h = int(h, 16) % (2 ** k)
@@ -196,13 +220,13 @@ def H1(bitstring, k):
     return binh
 
 #Takes as input a bitstring r (as bytes) and a bitlength k to hash to 
-#Returns the KMAC output (based on Keccak) of the bitstring in k bits as a sagemath matrix 
+#Returns the cSHAKE256 XOF of the bitstring in k bits as a sagemath matrix 
 def R(r, k):
     bytelength = int(ceil(k / 8))
-    secret = b'This is really a pseudorandom function'
-    kmac = KMAC256.new(key=secret, mac_len=bytelength)
-    kmac.update(r)
-    h_hex = kmac.hexdigest()
+    secret = b'Random Oracle R'
+    shake = cSHAKE256.new(custom=secret)
+    shake.update(r)
+    h_hex = shake.read(bytelength).hex()
     h_list = pad_as_list(int(h_hex, 16), k)
     h_vec = matrix(GF(2), h_list)
     return h_vec

@@ -1,5 +1,7 @@
 '''
-This file contains implementations of various IND-CCA2 secure transformations of the Classic McEliece protocol, using a variety of conversion functions. 
+Author: Nishka Dasgupta
+
+This file contains implementations of various IND-CCA2 secure transformations of the Classic McEliece protocol, using a variety of conversion functions for both security and to get the error vectors for the same. 
 References:
  - D. Engelbert, R. Overbeck, and A. Schmidt. A Summary of McEliece-Type Cryptosystems and their Security. Cryptology ePrint Archive, Paper 2006/162. https://eprint.iacr.org/2006/162. 2006. url: https://eprint.iacr.org/2006/162.
  - Kazukuni Kobara and Hideki Imai. “Semantically Secure McEliece Public-Key Cryptosystems - Conversions for McEliece PKC”. In: International Conference on Theory
@@ -10,6 +12,21 @@ pp. 435–438. doi: 10.1109/ISIT.2005.1523371.
 17th ACM International Conference on Computing Frontiers (2020).
  - Pierre-Louis Cayrel, Gerhard Hoffmann, and Edoardo Persichetti. “Efficient Implementation of a CCA2-Secure Variant of McEliece Using Generalized Srivastava Codes”. 
  In: International Conference on Theory and Practice of Public Key Cryptography. 2012.
+ 
+Functions:
+ - fujisaki_okamoto_encrypt_sendrier: Encrypt using Fujisaki-Okamoto conversion of Classic McEliece + Sendrier's Conversion
+ - fujisaki_okamoto_decrypt_sendrier: Decrypt using Fujisaki-Okamoto conversion of Classic McEliece + Sendrier's Conversion
+ - fujisaki_okamoto_encrypt_ideal: Encrypt using Fujisaki-Okamoto conversion of Classic McEliece + Barenghi-Pelosi's Conversion 
+ - fujisaki_okamoto_decrypt_ideal: Decrypt using Fujisaki-Okamoto conversion of Classic McEliece + Barenghi-Pelosi's Conversion 
+ - alt_fujisaki_okamoto_encrypt: Encrypt using Cayrel et al's version of Fujisaki-Okamoto conversion of classic McEliece
+ - alt_fujisaki_okamoto_decrypt: Decrypt using Cayrel et al's version of Fujisaki-Okamoto conversion of classic McEliece
+ - kobara_imai_gamma_encrypt: Encrypt using Kobara-Imai's gamma protocol (DOES NOT WORK: unavailability of suitable conversion)
+ - kobara_imai_alpha_encrypt: Encrypt using Kobara-Imai's alpha protocol 
+ - kobara_imai_alpha_decrypt: Decrypt using Kobara-Imai's alpha protocol
+ - generate_all_error_vecs: Naive lexicographic generation of error vectors for McEliece
+ - time_original_f_o: Runtime and tests for Fujisaki-Okamoto
+ - time_alt_f_o: Runtime and tests for alt_fujisaki_okamoto
+ - time_kobara_imai: Runtime and tests for Kobara-Imai alpha
 '''
 
 from sage.all_cmdline import *   # import sage library
@@ -77,7 +94,7 @@ def fujisaki_okamoto_encrypt_ideal(m, n, k, pk):
     return c1, c2
     
 #Decryption with the Fujisaki-Okamoto transform using Barenghi and Pelosi's function for converting bitstrings to constant-weight vectors
-#Since Conv() in the forward direction in this protocol is one-to-many, we need to unconvert to check
+#Since Conv() in the forward direction in this protocol is one-to-many/non-deterministic, we need to unconvert to check
 def fujisaki_okamoto_decrypt_ideal(c1, c2, pk, sk):
     k = pk[0].nrows()
     n = pk[0].ncols()
@@ -234,6 +251,8 @@ def time_original_f_o(n, t, m):
     print("Classic McEliece key generated...")
     k = pk[0].nrows()
     msg = random_matrix(GF(2), 1, k)
+    c1_sendrier, c2_sendrier = fujisaki_okamoto_encrypt_sendrier(msg, n, k, pk)
+    c1_ideal, c2_ideal = fujisaki_okamoto_encrypt_ideal(msg, n, k, pk)
     
     num_iter = 100
     duration_sendrier_enc = 0
@@ -247,22 +266,22 @@ def time_original_f_o(n, t, m):
         #Timing Sendrier
         start_enc = timeit.default_timer()
         c1, c2 = fujisaki_okamoto_encrypt_sendrier(msg, n, k, pk)
-        stop_enc = timeit.default_timer()
-        d = fujisaki_okamoto_decrypt_sendrier(c1, c2, pk, sk)
+        start_dec = timeit.default_timer()
+        d = fujisaki_okamoto_decrypt_sendrier(c1_sendrier, c2_sendrier, pk, sk)
         stop_dec = timeit.default_timer()
         assert d == msg
-        duration_sendrier_enc += (stop_enc - start_enc)
-        duration_sendrier_dec += stop_dec - stop_enc
+        duration_sendrier_enc += (start_dec - start_enc)
+        duration_sendrier_dec += stop_dec - start_dec
         
         #Timing Barenghi-Pelosi
         start_enc = timeit.default_timer()
         c1, c2 = fujisaki_okamoto_encrypt_ideal(msg, n, k, pk)
-        stop_enc = timeit.default_timer()
-        d = fujisaki_okamoto_decrypt_ideal(c1, c2, pk, sk)
+        start_dec = timeit.default_timer()
+        d = fujisaki_okamoto_decrypt_ideal(c1_ideal, c2_ideal, pk, sk)
         stop_dec = timeit.default_timer()
         assert d == msg
-        duration_ideal_enc += (stop_enc - start_enc)
-        duration_ideal_dec += (stop_dec - stop_enc)
+        duration_ideal_enc += (start_dec - start_enc)
+        duration_ideal_dec += (stop_dec - start_dec)
     print("Average encryption time of Fujisaki-Okamoto with Sendrier's conversion", duration_sendrier_enc / num_iter)
     print("Average decryption time of Fujisaki-Okamoto with Sendrier's conversion", duration_sendrier_dec / num_iter)
     print("Average encryption time of Fujisaki-Okamoto with Barenghi-Pelosi's conversion", duration_ideal_enc / num_iter)
@@ -270,12 +289,14 @@ def time_original_f_o(n, t, m):
 
 #Timing of the conversion-free Fujisaki-Okamoto transform    
 def time_alt_f_o(n, t, m):
+    print("Testing the Fujisaki-Okamoto transform (without Conversion) with n=", n, "t=", t, "m=", m)
     pk, sk = classic.keygen(n, t, m)
     print("Classic McEliece key generated...")
     k = pk[0].nrows()
     msg = random_matrix(GF(2), 1, k)
+    c1, c2 = alt_fujisaki_okamoto_encrypt(msg, n, k, pk)
 
-    num_iter = 10
+    num_iter = 100
     duration_enc = 0
     duration_dec = 0
     
@@ -284,12 +305,12 @@ def time_alt_f_o(n, t, m):
             print(i, "iterations...")
         start_enc = timeit.default_timer()
         c1, c2 = alt_fujisaki_okamoto_encrypt(msg, n, k, pk)
-        stop_enc = timeit.default_timer()
+        start_dec = timeit.default_timer()
         d = alt_fujisaki_okamoto_decrypt(c1, c2, pk, sk)
         stop_dec = timeit.default_timer()
         assert d == msg
-        duration_enc += stop_enc - start_enc 
-        duration_dec += stop_dec - stop_enc
+        duration_enc += start_dec - start_enc 
+        duration_dec += stop_dec - start_dec
     print("Average encryption time of Fujisaki-Okamoto without Conversion", duration_enc / num_iter)
     print("Average decryption time of Fujisaki-Okamoto without Conversion", duration_dec / num_iter)
 
@@ -298,10 +319,11 @@ def time_kobara_imai(n, t, m):
     print("Testing the Kobara-Imai alpha transform with n=", n, "t=", t, "m=", m)
     pk, sk = classic.keygen(n, t, m)
     k = pk[0].nrows()
-    msg = random_matrix(GF(2), 1, k + 500)
+    msg = random_matrix(GF(2), 1, k)
     const = random_matrix(GF(2), 1, 160)
+    c1, c2 = kobara_imai_alpha_encrypt(msg, n, k, pk)
     
-    num_iter = 10
+    num_iter = 10000
     duration_enc = 0
     duration_dec = 0
     
@@ -310,21 +332,21 @@ def time_kobara_imai(n, t, m):
             print(i, "iterations...")
         start_enc = timeit.default_timer()
         c1, c2 = kobara_imai_alpha_encrypt(msg, n, k, pk)
-        stop_enc = timeit.default_timer()
+        start_dec = timeit.default_timer()
         d = kobara_imai_alpha_decrypt(c1, c2, pk, sk)
         stop_dec = timeit.default_timer()
         assert d == msg
-        duration_enc += stop_enc - start_enc
-        duration_dec += stop_dec - stop_enc
+        duration_enc += start_dec - start_enc
+        duration_dec += stop_dec - start_dec
     print("Average encryption time of Kobara-Imai alpha", duration_enc / num_iter)
     print("Average decryption time of Kobara-Imai alpha", duration_dec / num_iter)
 
-#time_original_f_o(1024, 38, 10)
-#time_original_f_o(2048, 69, 11)
-#time_original_f_o(4096, 128, 12)
 #time_alt_f_o(1024, 38, 10)
 #time_alt_f_o(2048, 69, 11)
 #time_alt_f_o(4096, 128, 12)
+#time_original_f_o(1024, 38, 10)
+#time_original_f_o(2048, 69, 11)
+#time_original_f_o(4096, 128, 12)
 #time_kobara_imai(1024, 38, 10)
 #time_kobara_imai(2048, 69, 11)
 #time_kobara_imai(4096, 128, 12)

@@ -1,8 +1,20 @@
 '''
+Author: Nishka Dasgupta
+
 This file contains an implementation of Classic McEliece PKC as well as Goppa Code initialization via Bernstein.
 References:
  - Daniel J. Bernstein. Understanding binary-Goppa decoding. Cryptology ePrint Archive, Paper 2022/473. https://eprint.iacr.org/2022/473. 2022. url: https://eprint.iacr.org/2022/473
  - D. Engelbert, R. Overbeck, and A. Schmidt. A Summary of McEliece-Type Cryptosystems and their Security. Cryptology ePrint Archive, Paper 2006/162. https://eprint.iacr.org/2006/162. 2006. url: https://eprint.iacr.org/2006/162.
+
+Functions:
+ - generate_P: Generate the permutation matrix P 
+ - generate_S: Generate the matrix S
+ - generate_G_squarefree: Generate a Goppa code generator matrix G using a square-free polynomial 
+ - generate_G_irreducible: Try to generate a Goppa code generator matrix G using an irreducible polynomial (abandoned due to difficulties in efficiently generating irrediucible polynomials)
+ - keygen: Generate the public key (SGP, t) and the private key (S, P, decoding_info) from the parameters n, t, m (k is decided by Goppa creation)
+ - encrypt: Classic McEliece encryption 
+ - decrypt: Classic McEliece error-correction and decoding 
+
 '''
 
 from sage.all_cmdline import *   # import sage library
@@ -11,6 +23,7 @@ import timeit
 
 _sage_const_2 = Integer(2); _sage_const_1 = Integer(1); _sage_const_38 = Integer(38); _sage_const_6 = Integer(6); _sage_const_5 = Integer(5); _sage_const_69 = Integer(69); _sage_const_128 = Integer(128); _sage_const_7 = Integer(7); _sage_const_0 = Integer(0); _sage_const_1024 = Integer(1024); _sage_const_10 = Integer(10); _sage_const_2048 = Integer(2048); _sage_const_11 = Integer(11); _sage_const_4096 = Integer(4096); _sage_const_12 = Integer(12)
 
+#Return an n*n permutation of an identity matrix
 def generate_P(n):
     R = GF(2)
     M = identity_matrix(R, n)
@@ -20,6 +33,7 @@ def generate_P(n):
         M.swap_rows(i, j)
     return M
 
+#Return a random binary non-singular matrix
 def generate_S(k):
     R = GF(2)
     M = random_matrix(R, k, k)
@@ -27,6 +41,7 @@ def generate_S(k):
         M = random_matrix(R, k, k)
     return M
 
+#Return the generator matrix of a Goppa code using a square-free polynomial 
 def generate_G_squarefree(n, t, m):
     q = 2**m 
     F = GF(q)
@@ -45,6 +60,7 @@ def generate_G_squarefree(n, t, m):
     k = G.nrows()
     return (k, G, g, L, F) 
     
+#Return the generator matrix of a Goppa code using an irreducible polynomial for limited parameters     
 def generate_G_irreducible(n, t, m):
     Fp = GF(_sage_const_2 )
     Fpm = GF(_sage_const_2 **m)
@@ -78,6 +94,7 @@ def generate_G_irreducible(n, t, m):
 
     return (k, G, g, L, Fpm)
     
+#Return a public key and private key for Classic McEliece
 def keygen(n, t, m):
     goppa_info = generate_G_squarefree(n, t, m)
     k = goppa_info[0]
@@ -90,15 +107,17 @@ def keygen(n, t, m):
     pk = (G, t)
     sk = (S, P, decoding_info)
     return pk, sk
-    
+
+#Encrypt for Classic McEliece    
 def encrypt(m, z, pk):
     G = pk[0]
     c = (m * G) + z
     return c
     
+#Decrypt (error-correct and decode) for Classic McEliece    
 def decrypt(c, sk, pk):
     # c = mSGP + e 
-    # do cP^{-1} = mSG + eP^{-1} (see Ivan mail on why this is important)
+    # do cP^{-1} = mSG + eP^{-1}
     # do Bernstein error correcting to remove eP^{-1} (P is a permutation matrix, so this term is also a vector of weight t)
     # now do SG.solve_left(cP^{-1}) to get m
     S = sk[0]
@@ -124,7 +143,8 @@ def decrypt(c, sk, pk):
     m = SG.solve_left(c)
     
     return m, e
-    
+
+#Return a random error vector (length n, weight t)    
 def select_error(z, t, n):
     RR = Integers(n)
     wt = vector(z).hamming_weight()
@@ -135,7 +155,8 @@ def select_error(z, t, n):
         elif wt > t:
             z[0, pos_to_change] = 0
         wt = vector(z).hamming_weight()
-    
+
+#Runtime for keygen    
 def test_keygen(n, t, m):
     num_iter = 10000
     duration = 0
@@ -145,7 +166,8 @@ def test_keygen(n, t, m):
         stop = timeit.default_timer()
         duration += stop - start
     print("Average time for McEliece key generation is", duration / num_iter)
-    
+
+#Runtime for encrypt    
 def test_encrypt(n, t, m):
     pk, sk = keygen(n, t, m)
     print("Keygen done.")
@@ -164,28 +186,38 @@ def test_encrypt(n, t, m):
         stop = timeit.default_timer()
         duration = duration + stop - start
     print("Average encryption time of classic McEliece (including error vector generation) is", duration / num_iter)
-    
+
+#Runtime and test for decrypt    
 def test_decrypt(n, t, m):
-    print("testing for n=", n, "t=", t, "m=", m)
+    print("Timing Classic McEliece for n=", n, "t=", t, "m=", m)
     pk, sk = keygen(n, t, m)
     print("Keygen done")
     k = pk[0].nrows()
-    num_iter = 10
-    duration = 0
+    num_iter = 100
+    duration_enc = 0
+    duration_dec = 0
+    z = matrix(GF(2), 1, n)
+    select_error(z, t, n)
+    c = encrypt(msg, z, pk)
     
     for i in range(num_iter):
         if (i % (num_iter / 10)) == 0:
             print(i, "iterations...")
+        
         msg = random_matrix(GF(2), 1, k)
+        start_enc = timeit.default_timer()
         z = matrix(GF(2), 1, n)
         select_error(z, t, n)
+        
         c = encrypt(msg, z, pk)
-        start = timeit.default_timer()
+        start_dec = timeit.default_timer()
         d, e = decrypt(c, sk, pk)
         assert d == msg
-        stop = timeit.default_timer()
-        duration += stop - start
-    print("Average decryption time of classic McEliece is", duration / num_iter)
+        stop_dec = timeit.default_timer()
+        duration_enc += start_dec - start_enc 
+        duration_dec += stop_dec - start_dec
+    print("Average encryption time of classic McEliece (including error vector generation) is", duration_enc / num_iter)
+    print("Average decryption time of classic McEliece is", duration_dec / num_iter)
     
 #test_decrypt(1024, 38, 10)
 #test_decrypt(2048, 69, 11)
